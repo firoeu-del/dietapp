@@ -10,8 +10,8 @@ android {
         applicationId "ir.firoeu.dietrix"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
     }
 
     buildTypes {
@@ -25,3 +25,23 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+
+// Fetch the real IRANSansDN font.css from the live web app repo at build time.
+// Keeps the existing font.css if the download fails or looks incomplete.
+tasks.register('fetchRealFont') {
+    doLast {
+        def target = new File(projectDir, 'src/main/assets/font.css')
+        try {
+            def bytes = new URL('https://raw.githubusercontent.com/firoeu-del/diet-app/main/font.css').bytes
+            if (bytes.length > 35000) {
+                target.bytes = bytes
+                println 'fetchRealFont: replaced font.css (' + bytes.length + ' bytes)'
+            } else {
+                println 'fetchRealFont: fetched file too small (' + bytes.length + '), keeping existing font.css'
+            }
+        } catch (Exception e) {
+            println 'fetchRealFont: skipped (' + e.message + ')'
+        }
+    }
+}
+tasks.named('preBuild') { dependsOn 'fetchRealFont' }
