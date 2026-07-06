@@ -1,0 +1,59 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Embed Persian font
+        run: |
+          curl -fL --globoff -o /tmp/vazir.woff2 'https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn%5Bwght%5D.woff2' \
+            && printf '@font-face{font-family:"IRANSansDN";src:url(data:font/woff2;base64,%s) format("woff2");font-weight:100 900;font-display:swap;}' "$(base64 -w0 /tmp/vazir.woff2)" > app/src/main/assets/font.css \
+            || echo "Font download failed; keeping existing font.css"
+
+      - name: Build debug APK
+        run: gradle assembleDebug
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk dietrix.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dietrix-apk
+          path: android/dietrix.apk
+
+      - name: Publish release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: Dietrix APK
+          body: "APK ساخته‌شده به‌صورت خودکار — فایل dietrix.apk را دانلود و نصب کنید."
+          files: android/dietrix.apk
